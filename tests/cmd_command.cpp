@@ -15,6 +15,24 @@ struct ProgramOptionsCheckGetters {
     std::optional<std::string> optionalRes;
 };
 
+namespace {
+constexpr auto helpOp{"--help"};
+constexpr auto helpOpShort{"-h"};
+constexpr auto commandOp{"--command"};
+constexpr auto commandOpShort{"-c"};
+constexpr auto inputOp{"--input"};
+constexpr auto inputOpShort{"-i"};
+constexpr auto outputOp{"--output"};
+constexpr auto outputOpShort{"-o"};
+constexpr auto passwordOp{"--password"};
+constexpr auto passwordOpShort{"-p"};
+
+// commands get from CryptoGuard::CommandTypeStr
+constexpr auto inputFile{"some_input.txt"};
+constexpr auto outputFile{"some_output.txt"};
+constexpr auto password{"someStrongPassword"};
+};  // namespace
+
 std::vector<char *> GetCharVec(std::vector<std::string> &ops) {
     std::vector<char *> vec;
     vec.reserve(ops.size() + 1);
@@ -48,47 +66,30 @@ TEST(TestComponentName, CtorTest) {
     EXPECT_EQ(options.GetPassword(), "");
 }
 
-TEST(TestComponentName, ParseTest) {
-
-    constexpr auto helpOp{"--help"};
-    constexpr auto helpOpShort{"-h"};
-    constexpr auto commandOp{"--command"};
-    constexpr auto commandOpShort{"-c"};
-    constexpr auto inputOp{"--input"};
-    constexpr auto inputOpShort{"-i"};
-    constexpr auto outputOp{"--output"};
-    constexpr auto outputOpShort{"-o"};
-    constexpr auto passwordOp{"--password"};
-    constexpr auto passwordOpShort{"-p"};
-
-    // commands get from CryptoGuard::CommandTypeStr
-    constexpr auto inputFile{"some_input.txt"};
-    constexpr auto outputFile{"some_output.txt"};
-    constexpr auto password{"someStrongPassword"};
-
-    // help
+TEST(TestComponentName, ParseHelpTest) {
     CheckParseWithOps({helpOp}, {comType::MAX, "", "", "", ""});
     CheckParseWithOps({helpOpShort}, {comType::MAX, "", "", "", ""});
+}
 
-    // commands
+TEST(TestComponentName, ParseCommandTest) {
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::encCom}, {comType::ENCRYPT});
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::decCom}, {comType::DECRYPT});
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::checkCom}, {comType::CHECKSUM});
     CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::encCom}, {comType::ENCRYPT});
     CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::decCom}, {comType::DECRYPT});
     CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::checkCom}, {comType::CHECKSUM});
-
-    // in out
+}
+TEST(TestComponentName, ParseInOutTest) {
     CheckParseWithOps({inputOp, inputFile}, {comType::MAX, inputFile});
     CheckParseWithOps({inputOpShort, inputFile}, {comType::MAX, inputFile});
     CheckParseWithOps({outputOp, outputFile}, {comType::MAX, "", outputFile});
     CheckParseWithOps({outputOpShort, outputFile}, {comType::MAX, "", outputFile});
-
-    // pass
+}
+TEST(TestComponentName, ParsePassTest) {
     CheckParseWithOps({passwordOp, password}, {comType::MAX, "", "", password});
     CheckParseWithOps({passwordOpShort, password}, {comType::MAX, "", "", password});
-
-    // all
+}
+TEST(TestComponentName, ParseAllTest) {
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::encCom,  //
                        inputOp, inputFile,                              //
                        outputOp, outputFile,                            //
