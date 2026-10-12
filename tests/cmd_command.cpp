@@ -33,12 +33,12 @@ constexpr auto outputFile{"some_output.txt"};
 constexpr auto password{"someStrongPassword"};
 };  // namespace
 
-std::vector<char *> GetCharVec(std::vector<std::string> &ops) {
+std::vector<char *> GetCharVec(const std::vector<std::string> &ops) {
     std::vector<char *> vec;
     vec.reserve(ops.size() + 1);
-    vec.push_back("/path/to/app");  // @note: needed
+    vec.push_back(const_cast<char *>("/path/to/app"));  // @note: needed
     for (auto &val : ops) {
-        vec.push_back(val.data());
+        vec.push_back(const_cast<char *>(val.data()));
     }
     return vec;
 }
