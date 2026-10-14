@@ -3,7 +3,9 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <openssl/err.h>
 #include <openssl/evp.h>
+#include <print>
 #include <sstream>
 #include <stdexcept>
 
@@ -47,10 +49,10 @@ public:
 
         CtxUniquePtr ctx(EVP_MD_CTX_new());
         if (!ctx) {
-            throw std::runtime_error("EVP_MD_CTX_new failed");
+            ThrowOpenSSLError("CalculateChecksum: EVP_MD_CTX_new");
         }
         if (EVP_DigestInit_ex2(ctx.get(), EVP_sha256(), nullptr) != 1) {
-            throw std::runtime_error("EVP_DigestInit_ex2 failed");
+            ThrowOpenSSLError("CalculateChecksum: EVP_DigestInit_ex2");
         }
         constexpr std::size_t chunkSize = 1024;
         std::array<char, chunkSize> buffer{};
@@ -66,7 +68,7 @@ public:
 
             if (bytesRead > 0) {
                 if (EVP_DigestUpdate(ctx.get(), buffer.data(), static_cast<std::size_t>(bytesRead)) != 1) {
-                    throw std::runtime_error("EVP_DigestUpdate failed");
+                    ThrowOpenSSLError("CalculateChecksum: EVP_DigestUpdate");
                 }
             }
             if (inStream.eof())
@@ -76,7 +78,7 @@ public:
         unsigned int digestSize = 0;
 
         if (EVP_DigestFinal_ex(ctx.get(), digest.data(), &digestSize) != 1) {
-            throw std::runtime_error("EVP_DigestFinal_ex failed");
+            ThrowOpenSSLError("CalculateChecksum: EVP_DigestFinal_ex");
         }
 
         std::stringstream checksum;
@@ -93,11 +95,10 @@ private:
         AesCipherParams params;
         constexpr std::array<unsigned char, 8> salt = {'1', '2', '3', '4', '5', '6', '7', '8'};
 
-        int result = EVP_BytesToKey(params.cipher, EVP_sha256(), salt.data(),
-                                    reinterpret_cast<const unsigned char *>(password.data()), password.size(), 1,
-                                    params.key.data(), params.iv.data());
-        if (result == 0) {
-            throw std::runtime_error{"Failed to create a key from password"};
+        if (EVP_BytesToKey(params.cipher, EVP_sha256(), salt.data(),
+                           reinterpret_cast<const unsigned char *>(password.data()), password.size(), 1,
+                           params.key.data(), params.iv.data()) == 0) {
+            ThrowOpenSSLError("CreateChipherParamsFromPassword: EVP_BytesToKey");
         }
         return params;
     }
@@ -120,7 +121,7 @@ private:
 
         CtxUniquePtr ctx(EVP_CIPHER_CTX_new());
         if (!ctx) {
-            throw std::runtime_error("EVP_CIPHER_CTX_new failed");
+            ThrowOpenSSLError("doCrypt: EVP_CIPHER_CTX_new");
         }
 
         if (EVP_CipherInit_ex(ctx.get(),          //
@@ -129,7 +130,7 @@ private:
                               params.key.data(),  //
                               params.iv.data(),   //
                               params.encrypt) != 1) {
-            throw std::runtime_error("EVP_CipherInit_ex failed");
+            ThrowOpenSSLError("doCrypt: EVP_CipherInit_ex");
         }
 
         constexpr std::size_t chunkSize = 1024;
@@ -154,7 +155,7 @@ private:
                 if (EVP_CipherUpdate(ctx.get(), outBuf.data(), &outLen,
                                      reinterpret_cast<const unsigned char *>(inBuf.data()),
                                      static_cast<int>(bytesReaded)) != 1) {
-                    throw std::runtime_error("EVP_CipherUpdate failed");
+                    ThrowOpenSSLError("doCrypt: EVP_CipherUpdate");
                 }
                 writeOutStream(outLen);
             }
@@ -163,13 +164,33 @@ private:
             }
         }
         if (EVP_CipherFinal_ex(ctx.get(), outBuf.data(), &outLen) != 1) {
-            throw std::runtime_error("EVP_CipherFinal_ex failed");
+            ThrowOpenSSLError("doCrypt: EVP_CipherFinal_ex");
         }
         writeOutStream(outLen);
         outStream.flush();
         if (!outStream) {
             throw std::runtime_error("OutStream flush failed");
         }
+    }
+    void ThrowOpenSSLError(std::string_view operation) {
+        std::ostringstream message;
+        message << operation << " failed";
+
+        bool hasErrors = false;
+
+        while (const unsigned long code = ERR_get_error()) {
+            char text[256]{};
+
+            ERR_error_string_n(code, text, sizeof(text));
+
+            message << "\n  " << text;
+            hasErrors = true;
+        }
+
+        if (!hasErrors) {
+            message << ": OpenSSL error queue is empty";
+        }
+        throw std::runtime_error(message.str());
     }
 };
 
