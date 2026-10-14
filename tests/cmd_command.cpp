@@ -58,7 +58,7 @@ void CheckParseWithOps(std::vector<std::string> ops, const ProgramOptionsCheckGe
     EXPECT_EQ(options.GetPassword(), res.password);
 };
 
-TEST(TestComponentName, CtorTest) {
+TEST(ProgramOptionsTest, CtorTest) {
     CryptoGuard::ProgramOptions options;
     EXPECT_EQ(options.GetCommand(), CryptoGuard::ProgramOptions::COMMAND_TYPE::MAX);
     EXPECT_EQ(options.GetInputFile(), "");
@@ -66,12 +66,12 @@ TEST(TestComponentName, CtorTest) {
     EXPECT_EQ(options.GetPassword(), "");
 }
 
-TEST(TestComponentName, ParseHelpTest) {
+TEST(ProgramOptionsTest, ParseHelpTest) {
     CheckParseWithOps({helpOp}, {comType::MAX, "", "", "", ""});
     CheckParseWithOps({helpOpShort}, {comType::MAX, "", "", "", ""});
 }
 
-TEST(TestComponentName, ParseCommandTest) {
+TEST(ProgramOptionsTest, ParseCommandTest) {
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::encCom}, {comType::ENCRYPT});
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::decCom}, {comType::DECRYPT});
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::checkCom}, {comType::CHECKSUM});
@@ -79,17 +79,17 @@ TEST(TestComponentName, ParseCommandTest) {
     CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::decCom}, {comType::DECRYPT});
     CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::checkCom}, {comType::CHECKSUM});
 }
-TEST(TestComponentName, ParseInOutTest) {
+TEST(ProgramOptionsTest, ParseInOutTest) {
     CheckParseWithOps({inputOp, inputFile}, {comType::MAX, inputFile});
     CheckParseWithOps({inputOpShort, inputFile}, {comType::MAX, inputFile});
     CheckParseWithOps({outputOp, outputFile}, {comType::MAX, "", outputFile});
     CheckParseWithOps({outputOpShort, outputFile}, {comType::MAX, "", outputFile});
 }
-TEST(TestComponentName, ParsePassTest) {
+TEST(ProgramOptionsTest, ParsePassTest) {
     CheckParseWithOps({passwordOp, password}, {comType::MAX, "", "", password});
     CheckParseWithOps({passwordOpShort, password}, {comType::MAX, "", "", password});
 }
-TEST(TestComponentName, ParseAllTest) {
+TEST(ProgramOptionsTest, ParseAllTest) {
     CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::encCom,  //
                        inputOp, inputFile,                              //
                        outputOp, outputFile,                            //
@@ -97,7 +97,7 @@ TEST(TestComponentName, ParseAllTest) {
                       {comType::ENCRYPT, inputFile, outputFile, password});
 }
 
-TEST(TestComponentName, ErrorArgvParseTest) {
+TEST(ProgramOptionsTest, ErrorArgvParseTest) {
     CheckParseWithOps({""}, {comType::MAX, "", "", "", "App called without options!\n"});
 
     // @note: get this error, cos 'error' not a option, '--error' is option
