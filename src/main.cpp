@@ -1,7 +1,6 @@
 #include "cmd_options.h"
 #include "crypto_guard_ctx.h"
-#include <algorithm>
-#include <array>
+#include <fstream>
 #include <iostream>
 #include <openssl/evp.h>
 #include <print>
@@ -10,7 +9,6 @@
 
 int main(int argc, char *argv[]) {
     try {
-
         CryptoGuard::ProgramOptions options;
 
         using COMMAND_TYPE = CryptoGuard::ProgramOptions::COMMAND_TYPE;
@@ -23,17 +21,25 @@ int main(int argc, char *argv[]) {
                 throw std::runtime_error{parseRes.value()};
             }
         }
+        CryptoGuard::CryptoGuardCtx cryptoCtx;
         switch (options.GetCommand()) {
-        case COMMAND_TYPE::ENCRYPT:
-        case COMMAND_TYPE::DECRYPT:
-        case COMMAND_TYPE::CHECKSUM:
-            // skip or print some info, like "u choose 'com_name' command"
-            break;
-
+        case COMMAND_TYPE::ENCRYPT: {
+            std::fstream inFile(options.GetInputFile(), std::ios::in);
+            std::fstream outFile(options.GetOutputFile(), std::ios::out);
+            cryptoCtx.EncryptFile(inFile, outFile, options.GetPassword());
+        } break;
+        case COMMAND_TYPE::DECRYPT: {
+            std::fstream inFile(options.GetInputFile(), std::ios::in);
+            std::fstream outFile(options.GetOutputFile(), std::ios::out);
+            cryptoCtx.DecryptFile(inFile, outFile, options.GetPassword());
+        } break;
+        case COMMAND_TYPE::CHECKSUM: {
+            std::fstream inFile(options.GetInputFile(), std::ios::in);
+            std::print("Checksum: {}\n", cryptoCtx.CalculateChecksum(inFile));
+        } break;
         case COMMAND_TYPE::MAX:
             throw std::runtime_error{"Unsupported command"};
         }
-        CryptoGuard::CryptoGuardCtx cryptoCtx;
     } catch (const std::exception &e) {
         std::print(std::cerr, "Error: {}\n", e.what());
         return 1;

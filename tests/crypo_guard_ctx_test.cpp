@@ -126,3 +126,38 @@ TEST(CryptoGuardCtxTest, ThrowsOnTruncatedCiphertext) {
     CryptoGuard::CryptoGuardCtx cryptoCtx;
     ASSERT_THROW(cryptoCtx.DecryptFile(input, output, kPassword), std::runtime_error);
 }
+
+// checksum
+
+TEST(CryptoGuardCtxTest, HashesAbc) {
+    std::stringstream input("abc");
+
+    CryptoGuard::CryptoGuardCtx cryptoCtx;
+    EXPECT_EQ(cryptoCtx.CalculateChecksum(input), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+}
+
+TEST(CryptoGuardCtxTest, HashesEmptyInput) {
+    std::stringstream input;
+
+    CryptoGuard::CryptoGuardCtx cryptoCtx;
+    EXPECT_EQ(cryptoCtx.CalculateChecksum(input), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+}
+
+TEST(CryptoGuardCtxTest, HandlesBinaryDataAcrossChunkBoundary) {
+    // zeros data
+    std::string data(64 * 1024 + 1, '\0');
+    data.back() = static_cast<char>(0xff);
+
+    std::stringstream input(data);
+
+    CryptoGuard::CryptoGuardCtx cryptoCtx;
+    EXPECT_EQ(cryptoCtx.CalculateChecksum(input), "230afa6e5ff3a73189b22de6afcfc635222fa35e317713c7ae35e8447e7a2081");
+}
+
+TEST(CryptoGuardCtxTest, ThrowsOnInvalidStream) {
+    std::stringstream input("abc");
+    input.setstate(std::ios::badbit);
+
+    CryptoGuard::CryptoGuardCtx cryptoCtx;
+    ASSERT_THROW(cryptoCtx.CalculateChecksum(input), std::runtime_error);
+}

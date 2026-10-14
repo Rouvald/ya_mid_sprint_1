@@ -1,8 +1,10 @@
 #include "crypto_guard_ctx.h"
 #include <array>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <openssl/evp.h>
+#include <sstream>
 #include <stdexcept>
 
 namespace CryptoGuard {
@@ -37,7 +39,54 @@ public:
         doCrypt(inStream, outStream, password, 0);
     }
 
-    std::string CalculateChecksum(std::iostream &inStream) { return "NOT_IMPLEMENTED"; }
+    std::string CalculateChecksum(std::iostream &inStream) {
+        if (!inStream.good()) {
+            throw std::runtime_error("Invalid stream");
+        }
+        using CtxUniquePtr = std::unique_ptr<EVP_MD_CTX, decltype([](EVP_MD_CTX *ctx) { EVP_MD_CTX_free(ctx); })>;
+
+        CtxUniquePtr ctx(EVP_MD_CTX_new());
+        if (!ctx) {
+            throw std::runtime_error("EVP_MD_CTX_new failed");
+        }
+        if (EVP_DigestInit_ex2(ctx.get(), EVP_sha256(), nullptr) != 1) {
+            throw std::runtime_error("EVP_DigestInit_ex2 failed");
+        }
+        constexpr std::size_t chunkSize = 1024;
+        std::array<char, chunkSize> buffer{};
+
+        for (;;) {
+            inStream.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+
+            if (inStream.bad() || (inStream.fail() && !inStream.eof())) {
+                throw std::runtime_error("Input read failed");
+            }
+
+            const auto bytesRead = inStream.gcount();
+
+            if (bytesRead > 0) {
+                if (EVP_DigestUpdate(ctx.get(), buffer.data(), static_cast<std::size_t>(bytesRead)) != 1) {
+                    throw std::runtime_error("EVP_DigestUpdate failed");
+                }
+            }
+            if (inStream.eof())
+                break;
+        }
+        std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
+        unsigned int digestSize = 0;
+
+        if (EVP_DigestFinal_ex(ctx.get(), digest.data(), &digestSize) != 1) {
+            throw std::runtime_error("EVP_DigestFinal_ex failed");
+        }
+
+        std::stringstream checksum;
+        checksum << std::hex << std::setfill('0');
+
+        for (unsigned int i = 0; i < digestSize; ++i) {
+            checksum << std::setw(2) << static_cast<unsigned int>(digest[i]);
+        }
+        return checksum.str();
+    }
 
 private:
     AesCipherParams CreateChipherParamsFromPassword(std::string_view password) {
