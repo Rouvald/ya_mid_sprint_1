@@ -1,5 +1,6 @@
 #include "crypto_guard_ctx.h"
 #include <array>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -179,11 +180,12 @@ private:
         bool hasErrors = false;
 
         while (const unsigned long code = ERR_get_error()) {
-            char text[256]{};
+            constexpr std::size_t textSize = 256;
+            std::array<char, textSize> text{};
 
-            ERR_error_string_n(code, text, sizeof(text));
+            ERR_error_string_n(code, text.data(), text.size());
 
-            message << "\n  " << text;
+            message << "\n  " << text.data();
             hasErrors = true;
         }
 

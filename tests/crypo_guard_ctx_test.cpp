@@ -114,7 +114,7 @@ TEST(CryptoGuardCtxTest, DecryptsKnownCiphertext) {
 
     CryptoGuard::CryptoGuardCtx cryptoCtx;
     ASSERT_NO_THROW(cryptoCtx.DecryptFile(input, output, kPassword));
-    EXPECT_EQ(output.str(), "01234567890123456789");
+    EXPECT_EQ(output.str(), kPlaintext);
 }
 
 TEST(CryptoGuardCtxTest, ThrowsOnTruncatedCiphertext) {

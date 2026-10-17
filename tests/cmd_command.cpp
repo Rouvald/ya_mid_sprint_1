@@ -1,7 +1,6 @@
+#include "boost/program_options/errors.hpp"
 #include "cmd_options.h"
-#include <array>
 #include <gtest/gtest.h>
-#include <optional>
 #include <stdexcept>
 #include <vector>
 
@@ -12,7 +11,6 @@ struct ProgramOptionsCheckGetters {
     std::string inputFile;
     std::string outputFile;
     std::string password;
-    std::optional<std::string> optionalRes;
 };
 
 namespace {
@@ -31,6 +29,8 @@ constexpr auto passwordOpShort{"-p"};
 constexpr auto inputFile{"some_input.txt"};
 constexpr auto outputFile{"some_output.txt"};
 constexpr auto password{"someStrongPassword"};
+
+constexpr auto errorCommand{"someErrorCommand"};
 };  // namespace
 
 std::vector<char *> GetCharVec(const std::vector<std::string> &ops) {
@@ -49,9 +49,8 @@ void CheckParseWithOps(std::vector<std::string> ops, const ProgramOptionsCheckGe
     auto vec = GetCharVec(ops);
 
     CryptoGuard::ProgramOptions options;
-    const auto parseRes = options.Parse(vec.size(), vec.data());
+    options.Parse(vec.size(), vec.data());
 
-    EXPECT_EQ(parseRes, res.optionalRes);
     EXPECT_EQ(options.GetCommand(), res.command);
     EXPECT_EQ(options.GetInputFile(), res.inputFile);
     EXPECT_EQ(options.GetOutputFile(), res.outputFile);
@@ -61,52 +60,186 @@ void CheckParseWithOps(std::vector<std::string> ops, const ProgramOptionsCheckGe
 TEST(ProgramOptionsTest, CtorTest) {
     CryptoGuard::ProgramOptions options;
     EXPECT_EQ(options.GetCommand(), CryptoGuard::ProgramOptions::COMMAND_TYPE::MAX);
-    EXPECT_EQ(options.GetInputFile(), "");
-    EXPECT_EQ(options.GetOutputFile(), "");
-    EXPECT_EQ(options.GetPassword(), "");
+    EXPECT_TRUE(options.GetInputFile().empty());
+    EXPECT_TRUE(options.GetOutputFile().empty());
+    EXPECT_TRUE(options.GetPassword().empty());
 }
 
 TEST(ProgramOptionsTest, ParseHelpTest) {
-    CheckParseWithOps({helpOp}, {comType::MAX, "", "", "", ""});
-    CheckParseWithOps({helpOpShort}, {comType::MAX, "", "", "", ""});
+    CheckParseWithOps({helpOp}, {
+                                    comType::MAX,
+                                    "",
+                                    "",
+                                    "",
+                                });
+    CheckParseWithOps({helpOpShort}, {comType::MAX, "", "", ""});
 }
 
-TEST(ProgramOptionsTest, ParseCommandTest) {
-    CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::encCom}, {comType::ENCRYPT});
-    CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::decCom}, {comType::DECRYPT});
-    CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::checkCom}, {comType::CHECKSUM});
-    CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::encCom}, {comType::ENCRYPT});
-    CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::decCom}, {comType::DECRYPT});
-    CheckParseWithOps({commandOpShort, CryptoGuard::CommandTypeStr::checkCom}, {comType::CHECKSUM});
+TEST(ProgramOptionsTest, ParseCommandEncryptTest) {
+    CheckParseWithOps(
+        {
+            commandOp,                            //
+            CryptoGuard::CommandTypeStr::encCom,  //
+            inputOp,                              //
+            inputFile,                            //
+            outputOp,                             //
+            outputFile,                           //
+            passwordOp,                           //
+            password                              //
+        },
+        {
+            comType::ENCRYPT,  //
+            inputFile,         //
+            outputFile,        //
+            password           //
+        });
+    CheckParseWithOps(
+        {
+            commandOpShort,                       //
+            CryptoGuard::CommandTypeStr::encCom,  //
+            inputOpShort,                         //
+            inputFile,                            //
+            outputOp,                             //
+            outputFile,                           //
+            passwordOp,                           //
+            password                              //
+        },
+        {
+            comType::ENCRYPT,  //
+            inputFile,         //
+            outputFile,        //
+            password           //
+        });
 }
-TEST(ProgramOptionsTest, ParseInOutTest) {
-    CheckParseWithOps({inputOp, inputFile}, {comType::MAX, inputFile});
-    CheckParseWithOps({inputOpShort, inputFile}, {comType::MAX, inputFile});
-    CheckParseWithOps({outputOp, outputFile}, {comType::MAX, "", outputFile});
-    CheckParseWithOps({outputOpShort, outputFile}, {comType::MAX, "", outputFile});
+TEST(ProgramOptionsTest, ParseCommandDecryptTest) {
+    CheckParseWithOps(
+        {
+            commandOp,                            //
+            CryptoGuard::CommandTypeStr::decCom,  //
+            inputOp,                              //
+            inputFile,                            //
+            outputOp,                             //
+            outputFile,                           //
+            passwordOp,                           //
+            password                              //
+        },
+        {
+            comType::DECRYPT,  //
+            inputFile,         //
+            outputFile,        //
+            password           //
+        });
+    CheckParseWithOps(
+        {
+            commandOpShort,                       //
+            CryptoGuard::CommandTypeStr::decCom,  //
+            inputOpShort,                         //
+            inputFile,                            //
+            outputOp,                             //
+            outputFile,                           //
+            passwordOp,                           //
+            password                              //
+        },
+        {
+            comType::DECRYPT,  //
+            inputFile,         //
+            outputFile,        //
+            password           //
+        });
 }
-TEST(ProgramOptionsTest, ParsePassTest) {
-    CheckParseWithOps({passwordOp, password}, {comType::MAX, "", "", password});
-    CheckParseWithOps({passwordOpShort, password}, {comType::MAX, "", "", password});
-}
-TEST(ProgramOptionsTest, ParseAllTest) {
-    CheckParseWithOps({commandOp, CryptoGuard::CommandTypeStr::encCom,  //
-                       inputOp, inputFile,                              //
-                       outputOp, outputFile,                            //
-                       passwordOp, password},                           //
-                      {comType::ENCRYPT, inputFile, outputFile, password});
+TEST(ProgramOptionsTest, ParseCommandChecksumTest) {
+    CheckParseWithOps(
+        {
+            commandOp,                              //
+            CryptoGuard::CommandTypeStr::checkCom,  //
+            inputOp,                                //
+            inputFile                               //
+        },
+        {
+            comType::CHECKSUM,  //
+            inputFile,          //
+            "",                 //
+            ""                  //
+        });
+    CheckParseWithOps(
+        {
+            commandOpShort,                         //
+            CryptoGuard::CommandTypeStr::checkCom,  //
+            inputOpShort,                           //
+            inputFile,                              //
+        },
+        {
+            comType::CHECKSUM,  //
+            inputFile,          //
+            "",                 //
+            ""                  //
+        });
 }
 
 TEST(ProgramOptionsTest, ErrorArgvParseTest) {
-    CheckParseWithOps({""}, {comType::MAX, "", "", "", "App called without options!\n"});
+    // @note: without command name
+    {
+        std::vector<std::string> ops{commandOpShort};
+        auto vec = GetCharVec(ops);
 
-    // @note: get this error, cos 'error' not a option, '--error' is option
-    CheckParseWithOps({"error"}, {comType::MAX, "", "", "", "App called without options!\n"});
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), CryptoGuard::po::invalid_command_line_syntax);
+    }
+    // @note: without input op
+    {
+        std::vector<std::string> ops{commandOpShort, errorCommand};
+        auto vec = GetCharVec(ops);
 
-    // @note: test with error options -> raise boost throw
-    std::vector<std::string> ops{"--error"};
-    auto vec = GetCharVec(ops);
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), CryptoGuard::po::required_option);
+    }
+    // @note: without input file name
+    {
+        std::vector<std::string> ops{commandOpShort, CryptoGuard::CommandTypeStr::encCom, inputOpShort};
+        auto vec = GetCharVec(ops);
 
-    CryptoGuard::ProgramOptions options;
-    ASSERT_ANY_THROW(options.Parse(vec.size(), vec.data()));
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), CryptoGuard::po::invalid_command_line_syntax);
+    }
+    // @note: without output op (needed for encrypt command)
+    {
+        std::vector<std::string> ops{commandOpShort, CryptoGuard::CommandTypeStr::encCom, inputOpShort, inputFile};
+        auto vec = GetCharVec(ops);
+
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), CryptoGuard::po::required_option);
+    }
+    // @note: without password op (needed for encrypt command)
+    {
+        std::vector<std::string> ops{
+            commandOpShort, CryptoGuard::CommandTypeStr::encCom, inputOpShort, inputFile, outputOpShort, outputFile};
+        auto vec = GetCharVec(ops);
+
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), CryptoGuard::po::required_option);
+    }
+    // @note: app call without ops
+    {
+        std::vector<std::string> ops{""};
+        auto vec = GetCharVec(ops);
+
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), std::runtime_error);
+    }
+    // @note: app call with string
+    {
+        std::vector<std::string> ops{"error"};
+        auto vec = GetCharVec(ops);
+
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), std::runtime_error);
+    }
+    // @note: app call with unregistered op
+    {
+        std::vector<std::string> ops{"--error"};
+        auto vec = GetCharVec(ops);
+
+        CryptoGuard::ProgramOptions options;
+        ASSERT_THROW(options.Parse(vec.size(), vec.data()), CryptoGuard::po::unknown_option);
+    }
 }

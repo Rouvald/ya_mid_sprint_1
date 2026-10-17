@@ -12,15 +12,13 @@ int main(int argc, char *argv[]) {
         CryptoGuard::ProgramOptions options;
 
         using COMMAND_TYPE = CryptoGuard::ProgramOptions::COMMAND_TYPE;
-        const auto parseRes = options.Parse(argc, argv);
-        if (parseRes) {
-            // @note: if empty -> called option HELP -> exit 0
-            if (parseRes.value().empty()) {
-                return 0;
-            } else {
-                throw std::runtime_error{parseRes.value()};
-            }
+        options.Parse(argc, argv);
+
+        // @note: not find command and didn't raise exception -> it's 'help', just return 0
+        if (options.GetCommand() == COMMAND_TYPE::MAX) {
+            return 0;
         }
+
         CryptoGuard::CryptoGuardCtx cryptoCtx;
         switch (options.GetCommand()) {
         case COMMAND_TYPE::ENCRYPT: {
@@ -38,12 +36,12 @@ int main(int argc, char *argv[]) {
             std::print("Checksum: {}\n", cryptoCtx.CalculateChecksum(inFile));
         } break;
         case COMMAND_TYPE::MAX:
+            // @note: this case it's not possible, cos ProgramOptions::Parse has exception on that
             throw std::runtime_error{"Unsupported command"};
         }
     } catch (const std::exception &e) {
         std::print(std::cerr, "Error: {}\n", e.what());
         return 1;
     }
-
     return 0;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <boost/program_options.hpp>
-#include <optional>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -27,7 +27,7 @@ public:
         MAX
     };
 
-    std::optional<std::string> Parse(int argc, char *argv[]);
+    void Parse(int argc, char *argv[]);
 
     COMMAND_TYPE GetCommand() const { return command_; }
     std::string GetInputFile() const { return inputFile_; }
